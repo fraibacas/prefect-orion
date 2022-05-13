@@ -4,7 +4,7 @@ set -e
 VOLUMES_FOLDER=./volumes
 INITIALIZED_MARKER=./volumes/.initialized
 DC_ENV_FILE=.env
-LOCAL_ENV_FILE=prefect.env
+LOCAL_ENV_FILE=./flows/prefect.env
 
 
 # ------------------------------------
@@ -47,19 +47,19 @@ function initialize() {
     rm -rf ${VOLUMES_FOLDER} && mkdir -p ${VOLUMES_FOLDER}/postgres > /dev/null 2>&1
     start_server
     sleep 10
-    python ./init_orion.py
+    docker-compose exec prefect-server bash -c 'cd /flows && python ./init_orion.py'
     touch ${INITIALIZED_MARKER}
 }
 
 
 function start() {
-    if [ ! -e ${DC_ENV_FILE} ]; then
-        ln -s ${LOCAL_ENV_FILE} ${DC_ENV_FILE}
-    fi
     local server_started=0
     if [ ! -d ${VOLUMES_FOLDER} ] || [ ! -f ${INITIALIZED_MARKER} ]; then
         initialize
         server_started=1
+    fi
+    if [ ! -e ${DC_ENV_FILE} ]; then
+        ln -s ${LOCAL_ENV_FILE} ${DC_ENV_FILE}
     fi
     if [ ${server_started} -eq 0 ]; then
         start_server
