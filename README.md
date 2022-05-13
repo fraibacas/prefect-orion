@@ -11,7 +11,7 @@ Scripts to deploy Prefect 2.0 locally configured with Postgres, a docker agent, 
 
 ### Steps
 
-    * Clone this repo at the location of your convenience
+    * Clone this repo
     * Add folowing entry to your /etc/hosts:
         127.0.0.1 prefect-server
     * Cd into the prefect-orion folder
@@ -30,7 +30,7 @@ Scripts to deploy Prefect 2.0 locally configured with Postgres, a docker agent, 
         ```
         make register-test-flow
         ```
-        A flow named `my-docker-flow` should exist
+        A flow named `my-docker-flow` should have been created
     * Create a flow run from the UI by creating a `Quick Run` from the Flows view
 
 
