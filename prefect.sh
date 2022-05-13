@@ -44,7 +44,7 @@ function start_server() {
 
 function initialize() {
     echo "Environment needs to be initialized...."
-    rm -rf ${VOLUMES_FOLDER} && mkdir ${VOLUMES_FOLDER} > /dev/null 2>&1
+    rm -rf ${VOLUMES_FOLDER} && mkdir -p ${VOLUMES_FOLDER}/postgres > /dev/null 2>&1
     start_server
     sleep 10
     python ./init_orion.py

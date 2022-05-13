@@ -14,7 +14,7 @@ DeploymentSpec(
     name="docker-example",
     flow=my_docker_flow,
     flow_runner=DockerFlowRunner(
-        image = 'my-prefect-orion',
+        image = 'prefect-orion:beta4',
         image_pull_policy = 'IF_NOT_PRESENT',
         networks = ['prefect'],
         env = {
@@ -24,10 +24,4 @@ DeploymentSpec(
             "ENDPOINT_URL": 'http://minio:9000',
         }
     ),
-    #flow_storage=FileStorageBlock(base_path="s3://minio-flows/", key_type="hash"),
 )
-
-
-"""
-
-"""
