@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set +x
 
 VOLUMES_FOLDER=./volumes
 INITIALIZED_MARKER=./volumes/.initialized
@@ -27,7 +28,7 @@ function wait_until_postgres_ready() {
         (( iterations = iterations + 1 ))
     done
     if [ "${iterations}" -gt ${max_iterations} ]; then
-        echo "error starting ${svc_name}"
+        echo "error starting postgres"
         exit 1
     fi
 }
@@ -44,10 +45,19 @@ function start_server() {
 
 function initialize() {
     echo "Environment needs to be initialized...."
-    rm -rf ${VOLUMES_FOLDER} && mkdir -p ${VOLUMES_FOLDER}/postgres > /dev/null 2>&1
+    rm -rf ${VOLUMES_FOLDER} && \
+        mkdir -p ${VOLUMES_FOLDER}/postgres && \
+        mkdir -p ${VOLUMES_FOLDER}/prefect > /dev/null 2>&1
     start_server
-    sleep 10
+    sleep 1
+    set +e
     docker-compose exec prefect-server bash -c 'cd /flows && python ./init_orion.py'
+    if [ $? -ne 0 ]; then
+        echo "ERROR: prefect server failed to initialize"
+        exit 1
+    fi
+    set -e
+
     touch ${INITIALIZED_MARKER}
 }
 

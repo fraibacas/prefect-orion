@@ -1,4 +1,5 @@
 import requests
+import time
 
 OUTPUT_ENV_FILE = './prefect.env'
 
@@ -53,7 +54,26 @@ def init_work_queue(name='docker_queue'):
     return resp.json()['id']
 
 
+def wait_for_server_ready(max_wait_seconds: int = 60):
+    up = False
+    deadline = time.time() + max_wait_seconds
+    while time.time() <= deadline:
+        print('waiting for prefect server to be ready...')
+        try:
+            resp = session.get(f'{ORION_SERVER_URL}/api/health')
+            resp.raise_for_status()
+            up = resp.json()
+            if up is True:
+                break
+        except Exception:
+            pass
+        time.sleep(2)
+    if not up:
+        raise RuntimeError(f'prefect server not ready after {max_wait_seconds} seconds')
+
+
 def main():
+    wait_for_server_ready()
     storage_id = init_storage()
     queue_id = init_work_queue()
     with open(OUTPUT_ENV_FILE, 'w') as f:
