@@ -37,7 +37,7 @@ services:
   #             Prefect Server            #
   # --------------------------------------#
   prefect-server:
-    image: prefect-orion:beta4
+    image: prefect-orion:beta6
     command:
       - prefect
       - orion
@@ -62,7 +62,7 @@ services:
   #             Docker Agent              #
   # --------------------------------------#
   prefect-agent:
-    image: prefect-orion:beta4
+    image: prefect-orion:beta6
     command:
       - prefect
       - agent

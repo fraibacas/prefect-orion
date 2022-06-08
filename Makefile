@@ -1,5 +1,5 @@
 IMAGE_NAME := prefect-orion
-IMAGE_TAG := beta4
+IMAGE_TAG := beta6
 IMAGE := ${IMAGE_NAME}:${IMAGE_TAG}
 IMAGE_HASH := $(shell command docker images -q ${IMAGE} 2> /dev/null)
 

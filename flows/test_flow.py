@@ -14,7 +14,7 @@ DeploymentSpec(
     name="docker-example",
     flow=my_docker_flow,
     flow_runner=DockerFlowRunner(
-        image = 'prefect-orion:beta4',
+        image = 'prefect-orion:beta6',
         image_pull_policy = 'IF_NOT_PRESENT',
         networks = ['prefect'],
         env = {
