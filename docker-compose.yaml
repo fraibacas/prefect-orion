@@ -37,7 +37,7 @@ services:
   #             Prefect Server            #
   # --------------------------------------#
   prefect-server:
-    image: prefect-orion:beta8
+    image: ${PREFECT_SERVER_IMAGE}
     command:
       - prefect
       - orion
@@ -62,12 +62,13 @@ services:
   #             Docker Agent              #
   # --------------------------------------#
   prefect-agent:
-    image: prefect-orion:beta8
+    image: ${PREFECT_AGENT_IMAGE}
     command:
       - prefect
       - agent
       - start
-      - ${QUEUE_ID:-}
+      - -q
+      - default
     depends_on:
       prefect-server:
         condition: service_started
@@ -90,7 +91,8 @@ services:
       - MINIO_ROOT_PASSWORD=blablabla
     volumes:
       - ./volumes/minio:/data
-    command: server /data --console-address :9001
+    entrypoint: /bin/bash 
+    command: "-c 'mkdir -p /data/prefect-flows && sleep 10 && minio server /data --console-address :9001'"
     ports:
       - published: 9000
         target: 9000

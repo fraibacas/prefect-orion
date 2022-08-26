@@ -1,5 +1,5 @@
 IMAGE_NAME := prefect-orion
-IMAGE_TAG := beta8
+IMAGE_TAG := 2.2.0
 IMAGE := ${IMAGE_NAME}:${IMAGE_TAG}
 IMAGE_HASH := $(shell command docker images -q ${IMAGE} 2> /dev/null)
 
@@ -19,4 +19,4 @@ docker:
 
 .PHONY: register-test-flow
 register-test-flow: docker_image_cond
-	docker-compose exec prefect-server /bin/bash -c 'prefect deployment create /flows/test_flow.py'
+	docker-compose exec prefect-server /bin/bash -c 'cd /flows/test_flow && python deployment.py'
