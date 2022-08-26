@@ -5,7 +5,7 @@ set +x
 VOLUMES_FOLDER=./volumes
 INITIALIZED_MARKER=./volumes/.initialized
 DC_ENV_FILE=.env
-LOCAL_ENV_FILE=./flows/prefect.env
+LOCAL_ENV_FILE=./versions.env
 
 
 # ------------------------------------
@@ -64,12 +64,12 @@ function initialize() {
 
 function start() {
     local server_started=0
+    if [ ! -e ${DC_ENV_FILE} ]; then
+        ln -s ${LOCAL_ENV_FILE} ${DC_ENV_FILE}
+    fi
     if [ ! -d ${VOLUMES_FOLDER} ] || [ ! -f ${INITIALIZED_MARKER} ]; then
         initialize
         server_started=1
-    fi
-    if [ ! -e ${DC_ENV_FILE} ]; then
-        ln -s ${LOCAL_ENV_FILE} ${DC_ENV_FILE}
     fi
     if [ ${server_started} -eq 0 ]; then
         start_server
