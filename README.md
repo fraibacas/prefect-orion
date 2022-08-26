@@ -1,4 +1,4 @@
-# Prefect 2.0 docker compose deployment (Mac and Linux)
+# Prefect 2.0 docker compose deployment
 
 Scripts to deploy Prefect 2.0 locally configured with Postgres, a docker agent, and Minio for flow storage
 
@@ -23,15 +23,15 @@ Scripts to deploy Prefect 2.0 locally configured with Postgres, a docker agent, 
         ```
         ./prefect.sh start
         ```
-        The prefect.sh script initializes postgres, creates a worker queue and starts all services. Data (postgres, minio) is stored in a folder named `volumes`
+        The prefect.sh script initializes postgres and starts all services. Data (postgres, minio) is stored in a folder named `volumes`
     * Give the start command a few seconds, specially the first time since postgres and prefect need to be initializated
     * Open http://prefect-server:4200 in your browser and verify Prefect UI is up and running
-    * Deploy test flow
+    * Deploy test flow and deployment
         ```
         make register-test-flow
         ```
-        A flow named `my-docker-flow` should have been created
-    * Create a flow run from the UI by creating a `Quick Run` from the Flows view
+        A flow named `my-docker-flow` and a `my-docker-flow/docker-example` deployment should have been created
+    * Create a flow run from the `Deployments` screen by selecting the deployment and clicking on `Run`
 
 
     * To stop the services run `./prefect.sh stop`
