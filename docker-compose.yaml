@@ -29,7 +29,7 @@ services:
   # --------------------------------------#
   prefect-server:
     container_name: prefect-server
-    image: ${PREFECT_IMAGE}
+    image: ${PREFECT_BASE_IMAGE}
     command: >
       bash -c "prefect server start"
     ports:
@@ -39,7 +39,6 @@ services:
         condition: service_started
     volumes:
       - ${PWD}/volumes/prefect:/root/.prefect
-      - ./data:${PREFECT_DATA_PATH}
     environment:
       PREFECT_SERVER_API_HOST: 0.0.0.0
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${PREFECT_DATABASE}
@@ -66,8 +65,8 @@ services:
     environment:
       PREFECT_API_URL: http://${HOST_OR_IP}:4200/api
       PREFECT_LOGGING_LEVEL: INFO
-      PYTHONPATH: ${PREFECT_DATA_PATH}/flows
+      PYTHONPATH: ${PREFECT_FLOWS_PATH}/flows
     volumes:
-      - ./data:${PREFECT_DATA_PATH}
+      - ./flows:${PREFECT_FLOWS_PATH}
     networks:
       - prefect

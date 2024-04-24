@@ -2,4 +2,4 @@ __pycache__
 volumes
 *venv*
 
-data/flows/prefect.yaml
+flows/prefect.yaml

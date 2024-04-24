@@ -15,7 +15,7 @@ push: null
 # pull section allows you to provide instructions for cloning this project in remote locations
 pull:
 - prefect.deployments.steps.set_working_directory:
-    directory: ${PREFECT_DATA_PATH}/flows  # this folder is what gets mounted in prefect worker
+    directory: ${PREFECT_FLOWS_PATH} # this folder is what gets mounted in prefect worker
 
 # the deployments section allows you to provide configuration for deploying flows
 deployments:

@@ -53,15 +53,13 @@ EOSQL"
     ${DOCKER_COMPOSE} up -d --force-recreate --no-deps --remove-orphans prefect-server
     sleep 5
     docker-compose exec prefect-server /bin/bash -c "
-        cd ${PREFECT_DATA_PATH}/flows;
         prefect --no-prompt work-pool create ${PREFECT_WORKER_POOL} --type process;
     "
     # start worker and deploy sample flow
-    eval "echo \"$(cat ./data/flows/prefect.template.yaml)\"" > ./data/flows/prefect.yaml
     ${DOCKER_COMPOSE} up -d --force-recreate --no-deps --remove-orphans prefect-worker
     sleep 5
     docker-compose exec prefect-worker /bin/bash -c "
-        cd ${PREFECT_DATA_PATH}/flows;
+        cd ${PREFECT_FLOWS_PATH};
         prefect --no-prompt deploy --all;
     "
 }
@@ -77,8 +75,15 @@ function initialize() {
 }
 
 
+function ensure_config() {
+    if [ ! -f "./flows/prefect.yaml" ]; then
+        eval "echo \"$(cat ./flows/prefect.template.yaml)\"" > ./flows/prefect.yaml
+    fi
+}
+
+
 function start() {
-    local server_started=0
+    ensure_config
     if [ ! -d ${VOLUMES_FOLDER} ] || [ ! -f ${INITIALIZED_MARKER} ]; then
         ensure_images
         initialize # initialize starts all services
@@ -127,7 +132,7 @@ function prepare_environment() {
 function build_prefect_image() {
     local extra_flags=$1
     docker build ${extra_flags} \
-        -f ./Dockerfile \
+        -f ./build/Dockerfile \
         -t ${PREFECT_IMAGE} \
         --build-arg PREFECT_BASE_IMAGE=${PREFECT_BASE_IMAGE} .
 }
