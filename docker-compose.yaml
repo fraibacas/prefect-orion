@@ -1,47 +1,37 @@
-version: '3.5'
 
 networks:
   prefect:
     name: prefect
-
 
 services:
   # --------------------------------------#
   #               Postgres                #
   # --------------------------------------#
   postgres:
-    image: postgres:14
-    command:
-      - postgres
-      - -c
-      - max_connections=150
+    image: ${POSTGRES_IMAGE}
     environment:
-      POSTGRES_USER: prefect
-      POSTGRES_PASSWORD: test-password
-      POSTGRES_DB: prefect_server
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pg_data
+      POSTGRES_HOST_AUTH_METHOD: trust
     healthcheck:
       interval: 10s
       retries: 60
       start_period: 2s
       test: pg_isready -q -d $${POSTGRES_DB} -U $${POSTGRES_USER} | grep "accepting connections" || exit 1
       timeout: 2s
-    ports:
-    - published: 5433
-      target: 5432
-    restart: on-failure
     volumes:
-      - ./volumes/postgres:/var/lib/postgresql/data
+      - ${PWD}/volumes/postgres:/var/lib/postgresql/data/pg_data
     networks:
       - prefect
   # --------------------------------------#
   #             Prefect Server            #
   # --------------------------------------#
   prefect-server:
-    image: ${PREFECT_SERVER_IMAGE}
-    command:
-      - prefect
-      - orion
-      - start
+    container_name: prefect-server
+    image: ${PREFECT_IMAGE}
+    command: >
+      bash -c "prefect server start"
     ports:
       - 4200:4200
     depends_on:
@@ -49,54 +39,35 @@ services:
         condition: service_started
     volumes:
       - ${PWD}/volumes/prefect:/root/.prefect
-      - ${PWD}/flows:/flows
+      - ./data:${PREFECT_DATA_PATH}
     environment:
-      PREFECT_ORION_API_HOST: 0.0.0.0
-      PREFECT_ORION_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:test-password@postgres:5432/prefect_server
-      PREFECT_ORION_ANALYTICS_ENABLED: "false"
+      PREFECT_SERVER_API_HOST: 0.0.0.0
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${PREFECT_DATABASE}
+      PREFECT_SERVER_ANALYTICS_ENABLED: "false"
       PREFECT_LOGGING_SERVER_LEVEL: WARNING
-      PREFECT_API_URL: http://prefect-server:4200/api
+      PREFECT_API_URL: http://${HOST_OR_IP}:4200/api
     networks:
       - prefect
   # --------------------------------------#
-  #             Docker Agent              #
+  #             Prefect Worker            #
   # --------------------------------------#
-  prefect-agent:
-    image: ${PREFECT_AGENT_IMAGE}
+  prefect-worker:
+    container_name: prefect-worker
+    image: ${PREFECT_IMAGE}
     command:
       - prefect
-      - agent
+      - worker
       - start
-      - -q
-      - default
+      - --pool
+      - ${PREFECT_WORKER_POOL}
     depends_on:
       prefect-server:
         condition: service_started
     environment:
-      PREFECT_API_URL: http://prefect-server:4200/api
-      PREFECT_LOGGING_LEVEL: DEBUG
-      DOCKER_HOST: unix://var/run/docker.sock
+      PREFECT_API_URL: http://${HOST_OR_IP}:4200/api
+      PREFECT_LOGGING_LEVEL: INFO
+      PYTHONPATH: ${PREFECT_DATA_PATH}/flows
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - prefect
-
-  # --------------------------------------#
-  #         Minio for storage             #
-  # --------------------------------------#
-  minio:
-    image: minio/minio
-    environment:
-      - MINIO_ROOT_USER=blablabla
-      - MINIO_ROOT_PASSWORD=blablabla
-    volumes:
-      - ./volumes/minio:/data
-    entrypoint: /bin/bash 
-    command: "-c 'mkdir -p /data/prefect-flows && sleep 10 && minio server /data --console-address :9001'"
-    ports:
-      - published: 9000
-        target: 9000
-      - published: 9001
-        target: 9001
+      - ./data:${PREFECT_DATA_PATH}
     networks:
       - prefect

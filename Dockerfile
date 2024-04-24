@@ -1,4 +1,7 @@
-FROM prefecthq/prefect:2.4.5-python3.8
+ARG PREFECT_BASE_IMAGE
+FROM ${PREFECT_BASE_IMAGE}
+ENV PREFECT_BASE_IMAGE=${PREFECT_BASE_IMAGE}
+
 
 RUN apt update && \
     apt install -y vim && \

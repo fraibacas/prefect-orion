@@ -1,0 +1,30 @@
+# Welcome to your prefect.yaml file! You can use this file for storing and managing
+# configuration for deploying your flows. We recommend committing this file to source
+# control along with your flow code.
+
+# Generic metadata about this project
+name: prefect-examples
+prefect-version: ${PREFECT_VERSION}
+
+# build section allows you to manage and build docker images
+build: null
+
+# push section allows you to manage if and how this project is uploaded to remote locations
+push: null
+
+# pull section allows you to provide instructions for cloning this project in remote locations
+pull:
+- prefect.deployments.steps.set_working_directory:
+    directory: ${PREFECT_DATA_PATH}/flows  # this folder is what gets mounted in prefect worker
+
+# the deployments section allows you to provide configuration for deploying flows
+deployments:
+- name: dev
+  tags: ["example-flow"]
+  description: "sample flow"
+  entrypoint: test_flow.py:test_flow
+  parameters: {}
+  work_pool:
+    name: ${PREFECT_WORKER_POOL}
+    work_queue_name: ${PREFECT_WORKER_POOL}
+    job_variables: {}

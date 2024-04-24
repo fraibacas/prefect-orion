@@ -4,9 +4,10 @@ set +x
 
 VOLUMES_FOLDER=./volumes
 INITIALIZED_MARKER=./volumes/.initialized
-DC_ENV_FILE=.env
-LOCAL_ENV_FILE=./versions.env
+LOCAL_ENV_FILE=.env
 
+
+DOCKER_COMPOSE=docker-compose
 
 # ------------------------------------
 
@@ -16,7 +17,7 @@ function wait_until_postgres_ready() {
     local max_iterations=40
     while [ ${iterations} -le ${max_iterations} ]; do
         set +e
-        docker-compose exec postgres bash -c 'pg_isready | grep "accepting connections"' > /dev/null 2>&1
+        ${DOCKER_COMPOSE} exec postgres bash -c 'pg_isready | grep "accepting connections"' > /dev/null 2>&1
         local ready=$?
         set -e
         if [ ${ready} -eq 0 ]; then
@@ -34,62 +35,74 @@ function wait_until_postgres_ready() {
 }
 
 
-function start_server() {
-    docker-compose up -d --force-recreate --no-deps postgres
+function start_postgres() {
+    ${DOCKER_COMPOSE} up -d --force-recreate --no-deps postgres
     wait_until_postgres_ready
     sleep 1
-    docker-compose up -d --force-recreate --no-deps prefect-server
-    sleep 1
+}
+
+
+function init_environment() {
+    # init db
+    docker-compose exec postgres /bin/bash -c "
+PGPASSWORD=${POSTGRES_PASSWORD} psql --host postgres --username ${POSTGRES_USER} <<-EOSQL
+    CREATE DATABASE ${PREFECT_DATABASE};
+    GRANT ALL PRIVILEGES ON DATABASE ${PREFECT_DATABASE} TO ${POSTGRES_USER};
+EOSQL"
+    # start server
+    ${DOCKER_COMPOSE} up -d --force-recreate --no-deps --remove-orphans prefect-server
+    sleep 5
+    docker-compose exec prefect-server /bin/bash -c "
+        cd ${PREFECT_DATA_PATH}/flows;
+        prefect --no-prompt work-pool create ${PREFECT_WORKER_POOL} --type process;
+    "
+    # start worker and deploy sample flow
+    eval "echo \"$(cat ./data/flows/prefect.template.yaml)\"" > ./data/flows/prefect.yaml
+    ${DOCKER_COMPOSE} up -d --force-recreate --no-deps --remove-orphans prefect-worker
+    sleep 5
+    docker-compose exec prefect-worker /bin/bash -c "
+        cd ${PREFECT_DATA_PATH}/flows;
+        prefect --no-prompt deploy --all;
+    "
 }
 
 
 function initialize() {
     echo "Environment needs to be initialized...."
-    rm -rf ${VOLUMES_FOLDER} && \
-        mkdir -p ${VOLUMES_FOLDER}/postgres && \
-        mkdir -p ${VOLUMES_FOLDER}/prefect > /dev/null 2>&1
-    start_server
-    sleep 1
-    set +e
-    docker-compose exec prefect-server bash -c 'cd /flows && python ./init_orion.py'
-    if [ $? -ne 0 ]; then
-        echo "ERROR: prefect server failed to initialize"
-        exit 1
-    fi
-    set -e
-
+    reset
+    start_postgres
+    init_environment
     touch ${INITIALIZED_MARKER}
+    sleep 1
 }
 
 
 function start() {
     local server_started=0
-    if [ ! -e ${DC_ENV_FILE} ]; then
-        ln -s ${LOCAL_ENV_FILE} ${DC_ENV_FILE}
-    fi
     if [ ! -d ${VOLUMES_FOLDER} ] || [ ! -f ${INITIALIZED_MARKER} ]; then
-        initialize
-        server_started=1
+        ensure_images
+        initialize # initialize starts all services
+    else
+        start_postgres
+        ${DOCKER_COMPOSE} up -d --force-recreate prefect-server
+        sleep 2
+        ${DOCKER_COMPOSE} up -d --force-recreate prefect-worker
+        sleep 1
     fi
-    if [ ${server_started} -eq 0 ]; then
-        start_server
-        sleep 5
-    fi
-    docker-compose up -d --force-recreate --no-deps minio prefect-agent
     status
 }
 
 
 function status() {
     echo ''
-    docker-compose ps
+    ${DOCKER_COMPOSE} ps
     echo ''
 }
 
 
 function stop() {
     echo ''
-    docker-compose down
+    ${DOCKER_COMPOSE} down
     echo ''
 }
 
@@ -101,12 +114,44 @@ function reset() {
 }
 
 
+function prepare_environment() {
+    if [ -f "${LOCAL_ENV_FILE}" ]; then
+        for line in `cat ${LOCAL_ENV_FILE} | grep -v ^#`
+        do
+            eval "export $line"
+        done
+    fi
+}
+
+
+function build_prefect_image() {
+    local extra_flags=$1
+    docker build ${extra_flags} \
+        -f ./Dockerfile \
+        -t ${PREFECT_IMAGE} \
+        --build-arg PREFECT_BASE_IMAGE=${PREFECT_BASE_IMAGE} .
+}
+
+
+function ensure_images() {
+    local postgres_image_hash=$(docker images -q ${POSTGRES_IMAGE} 2> /dev/null)
+    if [ -z "${postgres_image_hash}" ]; then
+        ${DOCKER_COMPOSE} pull postgres
+    fi
+    local prefect_image_hash=$(docker images -q ${PREFECT_IMAGE} 2> /dev/null)
+    if [ -z "${prefect_image_hash}" ]; then
+        build_prefect_image
+    fi
+}
+
+
 # ------------------------------------
 
 
 ROOT_FOLDER=$(dirname $0)
 pushd ${ROOT_FOLDER} > /dev/null 2>&1
 
+prepare_environment
 
 case "$1" in
     "restart")
@@ -126,8 +171,11 @@ case "$1" in
         stop
         reset
         ;;
+    "build")
+        build_prefect_image "--no-cache"
+        ;;
     *)
-        echo "Unknown option <$1>. Valid options: [ start, stop, restart, status, reset ]"
+        echo "Unknown option <$1>. Valid options: [ start, stop, restart, status, reset, build ]"
         exit 1
         ;;
 esac
