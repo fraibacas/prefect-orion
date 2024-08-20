@@ -68,6 +68,7 @@ EOSQL"
 function initialize() {
     echo "Environment needs to be initialized...."
     reset
+    ensure_config
     start_postgres
     init_environment
     touch ${INITIALIZED_MARKER}
@@ -77,17 +78,24 @@ function initialize() {
 
 function ensure_config() {
     if [ ! -f "./flows/prefect.yaml" ]; then
-        eval "echo \"$(cat ./flows/prefect.template.yaml)\"" > ./flows/prefect.yaml
+        eval "echo \"$(cat ./flows/prefect.template.yaml)\"" > "./flows/prefect.yaml"
+    fi
+}
+
+
+function reset_config() {
+    if [ -f "./flows/prefect.yaml" ]; then
+        rm -f ./flows/prefect.yaml
     fi
 }
 
 
 function start() {
-    ensure_config
     if [ ! -d ${VOLUMES_FOLDER} ] || [ ! -f ${INITIALIZED_MARKER} ]; then
         ensure_images
         initialize # initialize starts all services
     else
+        ensure_config
         start_postgres
         ${DOCKER_COMPOSE} up -d --force-recreate prefect-server
         sleep 2
@@ -115,6 +123,7 @@ function stop() {
 function reset() {
     echo 'deleting ALL prefect data'
     rm -rf volumes
+    reset_config
     echo 'done!'
 }
 
